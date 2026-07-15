@@ -19,11 +19,11 @@ const CONFIG = {
   // Leave empty if this script is bound to the spreadsheet
   SHEET_ID: '', // e.g. '1abc...xyz'
 
-  ADMIN_PASSWORD: 'admin123', // CHANGE THIS
+  ADMIN_PASSWORD: 'Newpassword@5616', // CHANGE THIS
   ADMIN_WHATSAPP: '917004984949', // digits only with country code
 
   // Drive folder for screenshots (create folder → share with script account → paste ID)
-  DRIVE_FOLDER_ID: '', // optional; uses root if empty
+  DRIVE_FOLDER_ID: 'https://drive.google.com/drive/folders/1Lb2jNKn-MRBZngacSS381ezWTOnv6G9j?usp=sharing', // optional; uses root if empty
 
   // CallMeBot API key (default public key used by CallMeBot for WhatsApp)
   // User must activate: send "I allow callmebot to send me messages" to +34 644 66 25 23
