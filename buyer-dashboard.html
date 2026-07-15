@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Orders — DealKart</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🛒</div>
+        Deal<span>Kart</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="deals.html">Deals</a></li>
+        <li><a href="track.html">Track</a></li>
+        <li><a href="login.html" class="hidden" id="navLoginBtn">Login</a></li>
+      </ul>
+      <div class="nav-actions">
+        <span class="badge badge-blue" id="navUserChip">Buyer</span>
+        <a href="buyer-dashboard.html" class="btn btn-primary btn-sm" id="navDashBtn">My Orders</a>
+        <button class="btn btn-ghost btn-sm" id="navLogoutBtn" onclick="logout()">Logout</button>
+        <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <h1>👋 Hi, <span id="greetName">Buyer</span></h1>
+          <p class="muted small mt-1">UserID: <span class="mono" id="greetId">—</span> · Only your orders are shown</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="refreshAll()">↻ Refresh</button>
+      </div>
+
+      <!-- Mini stats -->
+      <div class="grid-4 mb-3" id="buyerStats">
+        <div class="stat-card"><div class="stat-value" id="bTotal">0</div><div class="stat-label">My Orders</div></div>
+        <div class="stat-card"><div class="stat-value" id="bActive">0</div><div class="stat-label">In Progress</div></div>
+        <div class="stat-card"><div class="stat-value" id="bDone">0</div><div class="stat-label">Refunded</div></div>
+        <div class="stat-card"><div class="stat-value" id="bCash">₹0</div><div class="stat-label">Cashback Got</div></div>
+      </div>
+
+      <div class="dash-layout">
+        <aside class="sidebar">
+          <button class="sidebar-link active" data-panel="orders" onclick="showPanel('orders')">📦 My Orders</button>
+          <button class="sidebar-link" data-panel="deals" onclick="showPanel('deals')">🏷️ Browse Deals</button>
+          <button class="sidebar-link" data-panel="query" onclick="showPanel('query')">💬 Raise Query</button>
+          <div class="sidebar-divider"></div>
+          <button class="sidebar-link" onclick="logout()">🚪 Logout</button>
+        </aside>
+
+        <div class="dash-main">
+          <!-- Orders panel -->
+          <section class="dash-panel active" id="panel-orders">
+            <div class="filter-bar">
+              <input type="search" id="orderSearch" placeholder="Search product / order…" oninput="renderOrders()" />
+              <select id="orderStatusFilter" onchange="renderOrders()">
+                <option value="">All statuses</option>
+              </select>
+            </div>
+            <div id="ordersList">
+              <div class="loading-center"><div class="spinner"></div>Loading your orders…</div>
+            </div>
+          </section>
+
+          <!-- Deals panel -->
+          <section class="dash-panel" id="panel-deals">
+            <div class="section-header">
+              <h2 class="section-title">Available Deals</h2>
+            </div>
+            <div id="buyerDealsGrid" class="grid-2">
+              <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>
+            </div>
+          </section>
+
+          <!-- Query panel -->
+          <section class="dash-panel" id="panel-query">
+            <div class="card" style="max-width:520px">
+              <h2 class="mb-2">💬 Raise a Query</h2>
+              <p class="small muted mb-2">Message goes to admin (WhatsApp when live API is connected).</p>
+              <form onsubmit="return submitQuery(event)">
+                <div class="form-group">
+                  <label>Related Order (optional)</label>
+                  <select id="queryOrder">
+                    <option value="">— General query —</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Message <span class="req">*</span></label>
+                  <textarea id="queryMsg" rows="4" placeholder="Describe your issue…" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="queryBtn">Send Query</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Order detail modal -->
+  <div class="modal-overlay" id="orderModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 id="modalTitle">Order</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container"><strong>DealKart</strong> · Buyer Dashboard</div>
+  </footer>
+
+  <script src="_config.js"></script>
+  <script>
+    let session = null;
+    let myOrders = [];
+    let deals = [];
+
+    // Auth guard
+    session = Session.get();
+    if (!session || session.role !== 'buyer') {
+      location.href = 'login.html';
+    } else {
+      document.getElementById('greetName').textContent = session.name || 'Buyer';
+      document.getElementById('greetId').textContent = session.userId || '—';
+      document.getElementById('navUserChip').textContent = session.name || session.userId;
+    }
+
+    function showPanel(name) {
+      document.querySelectorAll('.sidebar-link[data-panel]').forEach(b => {
+        b.classList.toggle('active', b.dataset.panel === name);
+      });
+      document.querySelectorAll('.dash-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'panel-' + name);
+      });
+      if (name === 'deals' && !deals.length) loadDeals();
+    }
+
+    async function refreshAll() {
+      await loadOrders();
+      if (document.getElementById('panel-deals').classList.contains('active')) {
+        deals = [];
+        await loadDeals();
+      }
+      showToast('Refreshed', 'success', 1500);
+    }
+
+    async function loadOrders() {
+      const res = await API.get('getOrders', { friendUserId: session.userId });
+      if (!res.success) {
+        document.getElementById('ordersList').innerHTML =
+          `<div class="empty-state"><div class="icon">😕</div>${escapeHtml(res.error || 'Failed')}</div>`;
+        return;
+      }
+      myOrders = res.data || [];
+      updateBuyerStats();
+      // status filter options
+      const statuses = [...new Set(myOrders.map(o => o.OrderStatus).filter(Boolean))];
+      const sel = document.getElementById('orderStatusFilter');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">All statuses</option>' +
+        statuses.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+      sel.value = cur;
+      // query order dropdown
+      const qSel = document.getElementById('queryOrder');
+      qSel.innerHTML = '<option value="">— General query —</option>' +
+        myOrders.map(o => `<option value="${escapeHtml(o.OrderNo)}">#${escapeHtml(o.OrderNo)} — ${escapeHtml(o.ProductName || '')}</option>`).join('');
+      renderOrders();
+    }
+
+    function updateBuyerStats() {
+      const closed = ['Got Refund', 'Cancelled by Amazon', 'product not delivered', 'Error on this product', 'Returned to seller by amz'];
+      const total = myOrders.length;
+      const done = myOrders.filter(o => o.OrderStatus === 'Got Refund').length;
+      const active = myOrders.filter(o => !closed.includes(o.OrderStatus)).length;
+      const cash = myOrders
+        .filter(o => o.OrderStatus === 'Got Refund')
+        .reduce((s, o) => s + (Number(o.ActualGot) || Number(o.FriendLess) || Number(o.ToGet) || 0), 0);
+      document.getElementById('bTotal').textContent = total;
+      document.getElementById('bActive').textContent = active;
+      document.getElementById('bDone').textContent = done;
+      document.getElementById('bCash').textContent = formatINR(cash);
+    }
+
+    function cashbackFor(o) {
+      if (o.ForWhom === 'Friend' && o.FriendLess) return Number(o.FriendLess);
+      return Number(o.Less) || 0;
+    }
+
+    function renderOrders() {
+      const q = (document.getElementById('orderSearch').value || '').toLowerCase();
+      const st = document.getElementById('orderStatusFilter').value;
+      let list = myOrders.filter(o => {
+        if (st && o.OrderStatus !== st) return false;
+        if (q) {
+          const hay = `${o.OrderNo} ${o.ProductName} ${o.OrderedPlatform} ${o.PlatformOrderID}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      const box = document.getElementById('ordersList');
+      if (!list.length) {
+        box.innerHTML = `<div class="empty-state"><div class="icon">📦</div>No orders yet. Browse deals and request one!</div>`;
+        return;
+      }
+
+      box.innerHTML = list.map(o => {
+        const step = DK.statusStep(o.OrderStatus);
+        const stepsMini = DK.STATUS_FLOW.map((lab, i) => {
+          let cls = 'pending';
+          if (step >= 0) {
+            if (i < step) cls = 'done';
+            else if (i === step) cls = 'active';
+          }
+          return `<div class="tl-step ${cls}" title="${escapeHtml(lab)}"><div class="tl-dot" style="width:18px;height:18px;font-size:0.55rem">${cls === 'done' ? '✓' : ''}</div></div>`;
+        }).join('');
+
+        return `
+          <div class="card mb-2" style="cursor:pointer" onclick="openOrder('${escapeHtml(String(o.OrderNo))}')">
+            <div class="flex-between flex-wrap gap-1 mb-1">
+              <div class="flex gap-1" style="align-items:center">
+                <span class="mono" style="font-weight:700">#${escapeHtml(o.OrderNo)}</span>
+                <span class="badge ${DK.badge(o.OrderStatus)}">${escapeHtml(o.OrderStatus || '—')}</span>
+              </div>
+              <span class="small muted">${escapeHtml(formatDate(o.OrderDate))}</span>
+            </div>
+            <div style="font-weight:600" class="mb-1">${escapeHtml(o.ProductName || 'Product')}</div>
+            <div class="flex flex-wrap gap-1 mb-1">
+              <span class="badge badge-blue">${escapeHtml(o.OrderedPlatform || '—')}</span>
+              <span class="small mono" style="color:var(--success)">Cashback ${formatINR(cashbackFor(o))}</span>
+              <span class="small mono muted">Paid ${formatINR(o.PricePaid)}</span>
+            </div>
+            <div class="timeline-h" style="padding:0.5rem 0 0;pointer-events:none">${stepsMini}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function openOrder(orderNo) {
+      const o = myOrders.find(x => String(x.OrderNo) === String(orderNo));
+      if (!o) return;
+      document.getElementById('modalTitle').textContent = `Order #${o.OrderNo}`;
+      const step = DK.statusStep(o.OrderStatus);
+      const dates = [o.OrderDate, o.DeliveryDate, o.ReviewDate, o.ReviewLiveDate, o.RefundFormDate, o.RefundDate];
+      const tl = DK.STATUS_FLOW.map((label, i) => {
+        let cls = 'pending';
+        if (step >= 0) {
+          if (i < step) cls = 'done';
+          else if (i === step) cls = 'active';
+        }
+        return `<div class="timeline-step ${cls}">
+          <div class="timeline-dot"></div>
+          <div class="timeline-label">${escapeHtml(label)}</div>
+          <div class="timeline-date">${dates[i] ? escapeHtml(formatDate(dates[i])) : '—'}</div>
+        </div>`;
+      }).join('');
+
+      document.getElementById('modalBody').innerHTML = `
+        <div class="mb-2"><span class="badge ${DK.badge(o.OrderStatus)}">${escapeHtml(o.OrderStatus)}</span></div>
+        <h3 class="mb-2">${escapeHtml(o.ProductName)}</h3>
+        <div class="timeline mb-3">${tl}</div>
+        <div class="detail-grid">
+          <div class="label">Platform</div><div class="value">${escapeHtml(o.OrderedPlatform)}</div>
+          <div class="label">Platform OID</div><div class="value mono">${escapeHtml(o.PlatformOrderID || '—')}</div>
+          <div class="label">Price Paid</div><div class="value mono">${formatINR(o.PricePaid)}</div>
+          <div class="label">Your Cashback</div><div class="value mono" style="color:var(--success)">${formatINR(cashbackFor(o))}</div>
+          <div class="label">To Get</div><div class="value mono">${formatINR(o.ToGet)}</div>
+          ${o.OrderStatus === 'Got Refund' ? `
+            <div class="label">Actual Got</div><div class="value mono" style="color:var(--success)">${formatINR(o.ActualGot || o.ToGet)}</div>
+            <div class="label">Payment</div><div class="value">${escapeHtml(o.PaymentMethod || '—')}</div>
+          ` : ''}
+          ${o.Notes ? `<div class="label">Notes</div><div class="value">${escapeHtml(o.Notes)}</div>` : ''}
+          ${o.ProductLink ? `<div class="label">Product Link</div><div class="value"><a href="${escapeHtml(o.ProductLink)}" target="_blank" rel="noopener">Open ↗</a></div>` : ''}
+        </div>
+        <div class="mt-2">
+          <a class="btn btn-secondary btn-sm" href="track.html?order=${encodeURIComponent(o.OrderNo)}">Open public track page</a>
+        </div>`;
+      document.getElementById('orderModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('orderModal').classList.remove('open');
+    }
+    document.getElementById('orderModal').addEventListener('click', e => {
+      if (e.target.id === 'orderModal') closeModal();
+    });
+
+    async function loadDeals() {
+      const res = await API.get('getDeals');
+      const grid = document.getElementById('buyerDealsGrid');
+      if (!res.success) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${escapeHtml(res.error || 'Failed')}</div>`;
+        return;
+      }
+      deals = res.data || [];
+      if (!deals.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏷️</div>No active deals right now.</div>`;
+        return;
+      }
+      grid.innerHTML = deals.map(d => {
+        const paid = Number(d.PricePaid) || 0;
+        const less = Number(d.Less) || 0;
+        const toGet = d.ToGet != null && d.ToGet !== '' ? Number(d.ToGet) : paid - less;
+        const id = d.id || d.ProductName;
+        return `
+          <div class="deal-card">
+            <div class="deal-body">
+              <div class="deal-platform">${escapeHtml(d.Platform || '')}</div>
+              <div class="deal-name">${escapeHtml(d.ProductName)}</div>
+              <div class="deal-price-row">
+                <span class="deal-price">${formatINR(toGet)}</span>
+                <span class="deal-mrp">${formatINR(paid)}</span>
+              </div>
+              <div class="deal-cashback">Cashback ${formatINR(less)}</div>
+            </div>
+            <div class="deal-footer">
+              <button class="btn btn-primary btn-sm btn-block"
+                onclick="requestDeal('${escapeHtml(String(id))}','${escapeHtml(d.ProductName || '')}')">
+                Request Deal
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function requestDeal(dealId, dealName) {
+      const res = await API.post('requestDeal', {
+        dealId, dealName,
+        buyerName: session.name,
+        buyerMobile: session.mobile,
+        buyerUserId: session.userId
+      });
+      if (res.success) showToast('Request sent to admin!', 'success');
+      else showToast(res.error || 'Failed', 'error');
+    }
+
+    async function submitQuery(e) {
+      e.preventDefault();
+      const btn = document.getElementById('queryBtn');
+      btn.disabled = true;
+      const res = await API.post('raiseQuery', {
+        buyerUserId: session.userId,
+        buyerName: session.name,
+        orderNo: document.getElementById('queryOrder').value,
+        message: document.getElementById('queryMsg').value.trim()
+      });
+      btn.disabled = false;
+      if (res.success) {
+        showToast('Query sent to admin', 'success');
+        document.getElementById('queryMsg').value = '';
+      } else showToast(res.error || 'Failed', 'error');
+      return false;
+    }
+
+    loadOrders();
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b6f9c1f8c08181',t:'MTc4NDA5OTcyMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

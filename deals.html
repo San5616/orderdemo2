@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deals — DealKart</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🛒</div>
+        Deal<span>Kart</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="deals.html" class="active">Deals</a></li>
+        <li><a href="track.html">Track</a></li>
+        <li><a href="login.html" id="navLoginBtn">Login</a></li>
+      </ul>
+      <div class="nav-actions">
+        <span class="badge badge-blue hidden" id="navUserChip"></span>
+        <a href="#" class="btn btn-primary btn-sm hidden" id="navDashBtn">Dashboard</a>
+        <button class="btn btn-ghost btn-sm hidden" id="navLogoutBtn" onclick="logout()">Logout</button>
+        <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <h1>🔥 Available Deals</h1>
+          <p class="muted mt-1" id="dealsSubtitle">Prices are blurred until you login as a buyer.</p>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="search" id="searchDeals" placeholder="Search product…" oninput="renderDeals()" />
+        <select id="filterPlatform" onchange="renderDeals()">
+          <option value="">All platforms</option>
+        </select>
+      </div>
+
+      <div id="loginBanner" class="card mb-2" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <strong>🔒 Login to unlock real prices</strong>
+          <div class="small muted">Buyers can request deals in 1 click after login.</div>
+        </div>
+        <a href="login.html" class="btn btn-primary btn-sm">Login</a>
+      </div>
+
+      <div id="dealsGrid" class="grid-3">
+        <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div>Loading deals…</div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container"><strong>DealKart</strong> · Deals</div>
+  </footer>
+
+  <script src="_config.js"></script>
+  <script>
+    let allDeals = [];
+    let loggedIn = false;
+    let session = null;
+
+    const PLATFORM_EMOJI = {
+      Amazon: '📦', Flipkart: '🛍️', Meesho: '👗', Myntra: '👠', Blinkit: '⚡',
+      Amz_Empty: '📭', Amz_Rating: '⭐', Fkt_Exchange: '🔄'
+    };
+
+    async function init() {
+      session = Session.get();
+      loggedIn = !!(session && (session.role === 'buyer' || session.role === 'admin'));
+      if (loggedIn) {
+        document.getElementById('loginBanner').classList.add('hidden');
+        document.getElementById('dealsSubtitle').textContent =
+          session.role === 'admin'
+            ? 'Admin view — all deal prices visible.'
+            : `Hi ${session.name || session.userId} — prices unlocked. Request any deal.`;
+      }
+
+      const res = await API.get('getDeals');
+      if (!res.success) {
+        document.getElementById('dealsGrid').innerHTML =
+          `<div class="empty-state" style="grid-column:1/-1"><div class="icon">😕</div>${escapeHtml(res.error || 'Failed to load')}</div>`;
+        return;
+      }
+      allDeals = res.data || [];
+      const platforms = [...new Set(allDeals.map(d => d.Platform || d.OrderedPlatform).filter(Boolean))];
+      const sel = document.getElementById('filterPlatform');
+      platforms.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p; o.textContent = p;
+        sel.appendChild(o);
+      });
+      renderDeals();
+    }
+
+    function renderDeals() {
+      const q = (document.getElementById('searchDeals').value || '').toLowerCase();
+      const plat = document.getElementById('filterPlatform').value;
+      let list = allDeals.filter(d => {
+        const name = (d.ProductName || '').toLowerCase();
+        const p = d.Platform || d.OrderedPlatform || '';
+        if (q && !name.includes(q) && !p.toLowerCase().includes(q)) return false;
+        if (plat && p !== plat) return false;
+        return true;
+      });
+
+      const grid = document.getElementById('dealsGrid');
+      if (!list.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏷️</div>No deals match your filter.</div>`;
+        return;
+      }
+
+      grid.innerHTML = list.map(d => {
+        const platform = d.Platform || d.OrderedPlatform || 'Deal';
+        const emoji = PLATFORM_EMOJI[platform] || '🛒';
+        const paid = Number(d.PricePaid) || 0;
+        const less = Number(d.Less) || 0;
+        const toGet = d.ToGet != null && d.ToGet !== '' ? Number(d.ToGet) : (paid - less);
+        const priceClass = loggedIn ? 'price-reveal' : 'price-blur';
+        const id = d.id || d.OrderNo || d.ProductName;
+
+        return `
+          <article class="deal-card">
+            <div class="deal-img">${emoji}</div>
+            <div class="deal-body">
+              <div class="deal-platform">${escapeHtml(platform)}${d.MediatorName ? ' · ' + escapeHtml(d.MediatorName) : ''}</div>
+              <div class="deal-name">${escapeHtml(d.ProductName || 'Product')}</div>
+              ${d.Notes ? `<div class="xs muted">${escapeHtml(d.Notes)}</div>` : ''}
+              <div class="deal-price-row">
+                <span class="deal-price ${priceClass}">${formatINR(toGet)}</span>
+                <span class="deal-mrp ${priceClass}">${formatINR(paid)}</span>
+              </div>
+              <div class="deal-cashback ${priceClass}">Cashback up to ${formatINR(less)}</div>
+            </div>
+            <div class="deal-footer">
+              ${loggedIn && session.role === 'buyer'
+                ? `<button class="btn btn-primary btn-sm btn-block" onclick="requestDeal('${escapeHtml(String(id))}','${escapeHtml(d.ProductName || '')}')">Request Deal</button>`
+                : loggedIn
+                  ? `<span class="badge badge-blue">Visible to admin</span>`
+                  : `<a href="login.html" class="btn btn-secondary btn-sm btn-block">Login to request</a>`
+              }
+            </div>
+          </article>`;
+      }).join('');
+    }
+
+    async function requestDeal(dealId, dealName) {
+      if (!session || session.role !== 'buyer') {
+        showToast('Login as buyer to request', 'warning');
+        return;
+      }
+      const res = await API.post('requestDeal', {
+        dealId,
+        dealName,
+        buyerName: session.name,
+        buyerMobile: session.mobile,
+        buyerUserId: session.userId
+      });
+      if (res.success) {
+        showToast('Deal request sent to admin via WhatsApp!', 'success');
+      } else {
+        showToast(res.error || 'Request failed', 'error');
+      }
+    }
+
+    init();
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b6f4db4a1a8181',t:'MTc4NDA5OTUyMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

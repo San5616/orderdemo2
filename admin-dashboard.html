@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — DealKart</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🛒</div>
+        Deal<span>Kart</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="deals.html">Deals</a></li>
+        <li><a href="track.html">Track</a></li>
+        <li><a href="login.html" class="hidden" id="navLoginBtn">Login</a></li>
+      </ul>
+      <div class="nav-actions">
+        <span class="badge badge-purple" id="navUserChip">Admin</span>
+        <a href="admin-dashboard.html" class="btn btn-primary btn-sm" id="navDashBtn">Admin</a>
+        <button class="btn btn-ghost btn-sm" id="navLogoutBtn" onclick="logout()">Logout</button>
+        <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <h1>🛠️ Admin Dashboard</h1>
+          <p class="muted small mt-1">San5616 · Full access · <span id="modeBadge" class="badge badge-yellow">Demo</span></p>
+        </div>
+        <div class="flex gap-1">
+          <button class="btn btn-secondary btn-sm" onclick="refreshDropdowns(); loadOrders(); loadStats(); showToast('Refreshed','success',1200)">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="grid-4 mb-3" id="adminStats">
+        <div class="stat-card"><div class="stat-value" id="aTotal">—</div><div class="stat-label">Orders</div></div>
+        <div class="stat-card"><div class="stat-value" id="aActive">—</div><div class="stat-label">Active</div></div>
+        <div class="stat-card"><div class="stat-value" id="aRefunded">—</div><div class="stat-label">Refunded</div></div>
+        <div class="stat-card"><div class="stat-value" id="aCash">—</div><div class="stat-label">Cashback</div></div>
+      </div>
+
+      <div class="dash-layout">
+        <aside class="sidebar">
+          <button class="sidebar-link active" data-panel="form" onclick="showPanel('form')">➕ New Order</button>
+          <button class="sidebar-link" data-panel="orders" onclick="showPanel('orders')">📋 All Orders</button>
+          <button class="sidebar-link" data-panel="whatsapp" onclick="showPanel('whatsapp')">💬 WhatsApp</button>
+          <button class="sidebar-link" data-panel="queries" onclick="showPanel('queries')">❓ Queries</button>
+          <button class="sidebar-link" data-panel="data" onclick="showPanel('data')">👥 Accounts / Mediators</button>
+          <button class="sidebar-link" data-panel="settings" onclick="showPanel('settings')">⚙️ Settings</button>
+          <div class="sidebar-divider"></div>
+          <button class="sidebar-link" onclick="logout()">🚪 Logout</button>
+        </aside>
+
+        <div class="dash-main">
+          <!-- ═══ NEW ORDER FORM ═══ -->
+          <section class="dash-panel active" id="panel-form">
+            <div class="section-header">
+              <h2 class="section-title">➕ Add New Order</h2>
+            </div>
+            <form id="orderForm" onsubmit="return submitOrder(event)">
+              <div class="form-section">
+                <div class="form-section-title">📦 Product & Platform</div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Ordered Platform <span class="req">*</span></label>
+                    <select id="f_OrderedPlatform" required></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Account Name <span class="req">*</span></label>
+                    <select id="f_AccountName" required></select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Product Name <span class="req">*</span></label>
+                  <input type="text" id="f_ProductName" required placeholder="Product title" />
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Seller Name</label>
+                    <input type="text" id="f_SellerName" placeholder="Seller" />
+                  </div>
+                  <div class="form-group">
+                    <label>Platform Order ID</label>
+                    <input type="text" id="f_PlatformOrderID" placeholder="AMZ-xxx / FKT-xxx" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Product Link</label>
+                  <input type="url" id="f_ProductLink" placeholder="https://…" />
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="form-section-title">💰 Pricing</div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Price Paid (₹) <span class="req">*</span></label>
+                    <input type="number" id="f_PricePaid" required min="0" step="1" oninput="calcToGet()" />
+                  </div>
+                  <div class="form-group">
+                    <label>Less / Cashback (₹) <span class="req">*</span></label>
+                    <input type="number" id="f_Less" required min="0" step="1" oninput="calcToGet()" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>To Get (auto)</label>
+                  <input type="number" id="f_ToGet" readonly class="mono" style="color:var(--success);font-weight:700" />
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="form-section-title">🤝 Mediator & Contact</div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Mediator Name <span class="req">*</span></label>
+                    <select id="f_MediatorName" required></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Deal Contact No</label>
+                    <input type="tel" id="f_DealContactNo" placeholder="10-digit mobile" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Order Date</label>
+                    <input type="date" id="f_OrderDate" />
+                  </div>
+                  <div class="form-group">
+                    <label>For Whom</label>
+                    <select id="f_ForWhom" onchange="toggleFriendFields()">
+                      <option value="Self">Self</option>
+                      <option value="Friend">Friend</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row" id="friendFields" style="display:none">
+                  <div class="form-group">
+                    <label>Friend UserID</label>
+                    <select id="f_FriendUserID">
+                      <option value="">— Select buyer —</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Friend Less (₹)</label>
+                    <input type="number" id="f_FriendLess" min="0" step="1" placeholder="Cashback for friend" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Mediator Order Form (link)</label>
+                    <input type="url" id="f_MediatorOrderForm" placeholder="https://…" />
+                  </div>
+                  <div class="form-group">
+                    <label>Mediator Refund Form (link)</label>
+                    <input type="url" id="f_MediatorRefundForm" placeholder="https://…" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="form-section-title">📎 Notes & Screenshot</div>
+                <div class="form-group">
+                  <label>Notes</label>
+                  <textarea id="f_Notes" rows="2" placeholder="Any notes…"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Order Screenshot (auto-compress ≤200KB)</label>
+                  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('f_Screenshot').click()">
+                    <input type="file" id="f_Screenshot" accept="image/*" onchange="onScreenshot(event)" />
+                    <div id="uploadLabel">📷 Tap to upload screenshot</div>
+                    <img id="uploadPreview" class="upload-preview hidden" alt="preview" />
+                    <div class="xs muted mt-1" id="uploadMeta"></div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Initial Status</label>
+                  <select id="f_OrderStatus"></select>
+                </div>
+              </div>
+
+              <div class="flex gap-1 flex-wrap">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitOrderBtn">✅ Submit Order + Notify WhatsApp</button>
+                <button type="reset" class="btn btn-secondary" onclick="resetFormExtras()">Clear</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- ═══ ALL ORDERS ═══ -->
+          <section class="dash-panel" id="panel-orders">
+            <div class="section-header">
+              <h2 class="section-title">📋 All Orders</h2>
+            </div>
+            <div class="filter-bar">
+              <input type="search" id="adminSearch" placeholder="Search…" oninput="renderOrdersTable()" />
+              <select id="adminStatusFilter" onchange="renderOrdersTable()">
+                <option value="">All statuses</option>
+              </select>
+              <select id="adminFriendFilter" onchange="renderOrdersTable()">
+                <option value="">All buyers</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Product</th>
+                    <th>Platform</th>
+                    <th>Paid</th>
+                    <th>Less</th>
+                    <th>Friend</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                  <tr><td colspan="9" class="text-center muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- ═══ WHATSAPP ═══ -->
+          <section class="dash-panel" id="panel-whatsapp">
+            <div class="section-header">
+              <h2 class="section-title">💬 WhatsApp Panel</h2>
+            </div>
+            <div class="card" style="max-width:560px">
+              <p class="small muted mb-2">
+                Uses CallMeBot free API. Number must be activated with CallMeBot first.
+                Admin default: <span class="mono" id="waAdminDisplay">+917004984949</span>
+              </p>
+              <form onsubmit="return sendManualWA(event)">
+                <div class="form-group">
+                  <label>To (with country code)</label>
+                  <input type="tel" id="waPhone" placeholder="919876543210" required />
+                </div>
+                <div class="form-group">
+                  <label>Auto-fill from order</label>
+                  <select id="waOrderPick" onchange="fillWAFromOrder()">
+                    <option value="">— Optional order template —</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Message</label>
+                  <textarea id="waMessage" rows="6" required placeholder="Type message…"></textarea>
+                </div>
+                <button type="submit" class="btn wa-btn btn-block" id="waSendBtn">📱 Send WhatsApp</button>
+              </form>
+            </div>
+          </section>
+
+          <!-- ═══ QUERIES ═══ -->
+          <section class="dash-panel" id="panel-queries">
+            <div class="section-header">
+              <h2 class="section-title">❓ Buyer Queries & Deal Requests</h2>
+              <button class="btn btn-secondary btn-sm" onclick="loadQueries()">↻</button>
+            </div>
+            <div id="queriesList">
+              <div class="loading-center"><div class="spinner"></div></div>
+            </div>
+          </section>
+
+          <!-- ═══ ACCOUNTS / MEDIATORS ═══ -->
+          <section class="dash-panel" id="panel-data">
+            <div class="grid-2">
+              <div class="card">
+                <h3 class="mb-2">👤 Add Account / Buyer</h3>
+                <form onsubmit="return addAccount(event)">
+                  <div class="form-group">
+                    <label>UserID</label>
+                    <input id="acc_UserID" required placeholder="B_Name_01" />
+                  </div>
+                  <div class="form-group">
+                    <label>Name</label>
+                    <input id="acc_Name" required />
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Mobile</label>
+                      <input id="acc_Mobile" required />
+                    </div>
+                    <div class="form-group">
+                      <label>WhatsApp</label>
+                      <input id="acc_WhatsApp" placeholder="91…" />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Role</label>
+                    <select id="acc_Role">
+                      <option value="buyer">buyer</option>
+                      <option value="account">account (reviewer)</option>
+                    </select>
+                  </div>
+                  <button class="btn btn-primary btn-sm" type="submit">Add Account</button>
+                </form>
+                <div class="mt-2 small muted" id="accountsList"></div>
+              </div>
+
+              <div class="card">
+                <h3 class="mb-2">🤝 Add Mediator</h3>
+                <form onsubmit="return addMediator(event)">
+                  <div class="form-group">
+                    <label>Name</label>
+                    <input id="med_Name" required />
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Contact</label>
+                      <input id="med_Contact" />
+                    </div>
+                    <div class="form-group">
+                      <label>WhatsApp</label>
+                      <input id="med_WhatsApp" placeholder="91…" />
+                    </div>
+                  </div>
+                  <button class="btn btn-primary btn-sm" type="submit">Add Mediator</button>
+                </form>
+                <div class="mt-2 small muted" id="mediatorsList"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ SETTINGS ═══ -->
+          <section class="dash-panel" id="panel-settings">
+            <div class="card" style="max-width:520px">
+              <h2 class="mb-2">⚙️ Admin Settings</h2>
+              <form onsubmit="return saveSettings(event)">
+                <div class="form-group">
+                  <label>Admin WhatsApp (digits, country code)</label>
+                  <input id="set_AdminWA" placeholder="917004984949" />
+                </div>
+                <div class="form-group">
+                  <label>New Admin Password (leave blank to keep)</label>
+                  <input type="password" id="set_AdminPass" placeholder="••••••••" autocomplete="new-password" />
+                </div>
+                <div class="form-group">
+                  <label>API URL status</label>
+                  <div class="small mono" id="set_ApiStatus" style="word-break:break-all;color:var(--text-muted)"></div>
+                </div>
+                <button class="btn btn-primary" type="submit">Save Settings</button>
+              </form>
+              <div class="mt-3 small muted">
+                <strong>Deploy checklist</strong>
+                <ol class="mt-1" style="padding-left:1.2rem;line-height:1.8">
+                  <li>Create Google Sheet · run <span class="mono">setupSheetTemplate()</span> in Apps Script</li>
+                  <li>Paste <span class="mono">Code.gs</span> · set password & sheet ID</li>
+                  <li>Deploy Web App (Anyone) · copy URL into <span class="mono">_config.js</span></li>
+                  <li>Set <span class="mono">DK.DEMO_MODE</span> false / replace API_URL</li>
+                  <li>Activate CallMeBot for admin number</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Edit Order Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 id="editTitle">Edit Order</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeEdit()">✕</button>
+      </div>
+      <div class="modal-body" id="editBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEdit()">Cancel</button>
+        <button class="btn btn-primary" id="saveEditBtn" onclick="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container"><strong>DealKart</strong> · Admin · San5616</div>
+  </footer>
+
+  <script src="_config.js"></script>
+  <script>
+    let session = null;
+    let allOrders = [];
+    let dropdowns = { platforms: [], accounts: [], mediators: [], statuses: [], buyers: [] };
+    let screenshotData = null; // { base64, mimeType, name, url? }
+    let editingOrderNo = null;
+
+    // Auth
+    session = Session.get();
+    if (!session || session.role !== 'admin') {
+      location.href = 'login.html?tab=admin';
+    }
+
+    // Mode badge
+    const live = DK.API_URL && !DK.API_URL.includes('YOUR_APPS_SCRIPT');
+    document.getElementById('modeBadge').textContent = live ? 'Live API' : 'Demo Mode';
+    document.getElementById('modeBadge').className = 'badge ' + (live ? 'badge-green' : 'badge-yellow');
+    document.getElementById('set_ApiStatus').textContent = live ? DK.API_URL : 'Not configured — using localStorage demo DB';
+
+    // Date default
+    document.getElementById('f_OrderDate').value = new Date().toISOString().slice(0, 10);
+
+    function showPanel(name) {
+      document.querySelectorAll('.sidebar-link[data-panel]').forEach(b => {
+        b.classList.toggle('active', b.dataset.panel === name);
+      });
+      document.querySelectorAll('.dash-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'panel-' + name);
+      });
+      if (name === 'orders') loadOrders();
+      if (name === 'queries') loadQueries();
+      if (name === 'data') refreshDataLists();
+      if (name === 'whatsapp') fillWAOrderPick();
+      if (name === 'settings') loadSettings();
+    }
+
+    function calcToGet() {
+      const paid = Number(document.getElementById('f_PricePaid').value) || 0;
+      const less = Number(document.getElementById('f_Less').value) || 0;
+      document.getElementById('f_ToGet').value = paid - less;
+    }
+
+    function toggleFriendFields() {
+      const show = document.getElementById('f_ForWhom').value === 'Friend';
+      document.getElementById('friendFields').style.display = show ? 'grid' : 'none';
+    }
+
+    async function refreshDropdowns() {
+      const res = await API.get('getDropdowns');
+      if (!res.success) return;
+      dropdowns = res.data;
+      fillSelect('f_OrderedPlatform', dropdowns.platforms);
+      fillSelect('f_AccountName', dropdowns.accounts);
+      fillSelect('f_MediatorName', dropdowns.mediators);
+      fillSelect('f_OrderStatus', dropdowns.statuses || DK.STATUS_FLOW.concat(DK.EXTRA_STATUSES));
+      document.getElementById('f_OrderStatus').value = 'Order Placed';
+
+      const friendSel = document.getElementById('f_FriendUserID');
+      const buyers = dropdowns.buyers || [];
+      friendSel.innerHTML = '<option value="">— Select buyer —</option>' +
+        buyers.map(b => `<option value="${escapeHtml(b.UserID)}">${escapeHtml(b.UserID)} — ${escapeHtml(b.Name || '')}</option>`).join('');
+
+      // filters
+      const st = document.getElementById('adminStatusFilter');
+      const curSt = st.value;
+      st.innerHTML = '<option value="">All statuses</option>' +
+        (dropdowns.statuses || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+      st.value = curSt;
+
+      const fr = document.getElementById('adminFriendFilter');
+      const curFr = fr.value;
+      fr.innerHTML = '<option value="">All buyers</option>' +
+        buyers.map(b => `<option value="${escapeHtml(b.UserID)}">${escapeHtml(b.UserID)}</option>`).join('');
+      fr.value = curFr;
+
+      refreshDataLists();
+    }
+
+    function fillSelect(id, arr) {
+      const el = document.getElementById(id);
+      const cur = el.value;
+      el.innerHTML = (arr || []).map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      if (cur && arr.includes(cur)) el.value = cur;
+    }
+
+    function refreshDataLists() {
+      const acc = dropdowns.accountDetails || [];
+      document.getElementById('accountsList').innerHTML =
+        '<strong>Current:</strong><br>' +
+        acc.map(a => `<span class="mono">${escapeHtml(a.UserID)}</span> · ${escapeHtml(a.Name || '')} · ${escapeHtml(a.Role || '')}`).join('<br>') || '—';
+      const med = dropdowns.mediatorDetails || [];
+      document.getElementById('mediatorsList').innerHTML =
+        '<strong>Current:</strong><br>' +
+        med.map(m => `${escapeHtml(m.Name)} · ${escapeHtml(m.Contact || '')}`).join('<br>') || '—';
+    }
+
+    async function loadStats() {
+      const res = await API.get('getStats');
+      if (!res.success) return;
+      const s = res.data;
+      document.getElementById('aTotal').textContent = s.total;
+      document.getElementById('aActive').textContent = s.active;
+      document.getElementById('aRefunded').textContent = s.refunded;
+      document.getElementById('aCash').textContent = formatINR(s.cashback);
+    }
+
+    async function loadOrders() {
+      const res = await API.get('getOrders');
+      if (!res.success) {
+        document.getElementById('ordersTableBody').innerHTML =
+          `<tr><td colspan="9" class="text-center">${escapeHtml(res.error || 'Error')}</td></tr>`;
+        return;
+      }
+      allOrders = res.data || [];
+      renderOrdersTable();
+      fillWAOrderPick();
+    }
+
+    function renderOrdersTable() {
+      const q = (document.getElementById('adminSearch').value || '').toLowerCase();
+      const st = document.getElementById('adminStatusFilter').value;
+      const fr = document.getElementById('adminFriendFilter').value;
+      let list = allOrders.filter(o => {
+        if (st && o.OrderStatus !== st) return false;
+        if (fr && o.FriendUserID !== fr) return false;
+        if (q) {
+          const hay = `${o.OrderNo} ${o.ProductName} ${o.OrderedPlatform} ${o.AccountName} ${o.MediatorName} ${o.PlatformOrderID} ${o.FriendUserID}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      const tb = document.getElementById('ordersTableBody');
+      if (!list.length) {
+        tb.innerHTML = `<tr><td colspan="9" class="text-center muted">No orders</td></tr>`;
+        return;
+      }
+      tb.innerHTML = list.map(o => `
+        <tr>
+          <td class="mono"><strong>${escapeHtml(o.OrderNo)}</strong></td>
+          <td><div class="truncate" style="max-width:180px" title="${escapeHtml(o.ProductName)}">${escapeHtml(o.ProductName)}</div></td>
+          <td>${escapeHtml(o.OrderedPlatform)}</td>
+          <td class="mono">${formatINR(o.PricePaid)}</td>
+          <td class="mono" style="color:var(--success)">${formatINR(o.Less)}</td>
+          <td class="small mono">${escapeHtml(o.FriendUserID || o.ForWhom || '—')}</td>
+          <td><span class="badge ${DK.badge(o.OrderStatus)}">${escapeHtml(o.OrderStatus || '—')}</span></td>
+          <td class="small">${escapeHtml(formatDate(o.OrderDate))}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="openEdit('${escapeHtml(String(o.OrderNo))}')">Edit</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Screenshot
+    async function onScreenshot(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        document.getElementById('uploadLabel').textContent = 'Compressing…';
+        const data = await compressImage(file, 200);
+        screenshotData = data;
+        const preview = document.getElementById('uploadPreview');
+        preview.src = `data:${data.mimeType};base64,${data.base64}`;
+        preview.classList.remove('hidden');
+        document.getElementById('uploadLabel').textContent = '✓ Screenshot ready';
+        document.getElementById('uploadMeta').textContent =
+          `${data.name} · ${Math.round(data.size / 1024)} KB (compressed)`;
+      } catch (err) {
+        showToast('Image compress failed: ' + err.message, 'error');
+        screenshotData = null;
+      }
+    }
+
+    function resetFormExtras() {
+      screenshotData = null;
+      document.getElementById('uploadPreview').classList.add('hidden');
+      document.getElementById('uploadLabel').textContent = '📷 Tap to upload screenshot';
+      document.getElementById('uploadMeta').textContent = '';
+      document.getElementById('friendFields').style.display = 'none';
+      document.getElementById('f_OrderDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('f_ToGet').value = '';
+    }
+
+    async function submitOrder(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitOrderBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      let screenshotUrl = '';
+      if (screenshotData && screenshotData.base64) {
+        const up = await API.post('uploadScreenshot', screenshotData);
+        if (up.success && up.data) {
+          screenshotUrl = up.data.viewUrl || up.data.url || '';
+        }
+      }
+
+      const order = {
+        OrderedPlatform: val('f_OrderedPlatform'),
+        AccountName: val('f_AccountName'),
+        ProductName: val('f_ProductName'),
+        SellerName: val('f_SellerName'),
+        ProductLink: val('f_ProductLink'),
+        PlatformOrderID: val('f_PlatformOrderID'),
+        PricePaid: Number(val('f_PricePaid')) || 0,
+        Less: Number(val('f_Less')) || 0,
+        ToGet: Number(val('f_ToGet')) || 0,
+        DealContactNo: val('f_DealContactNo'),
+        MediatorName: val('f_MediatorName'),
+        OrderDate: val('f_OrderDate'),
+        FriendUserID: val('f_FriendUserID'),
+        FriendLess: val('f_FriendLess'),
+        ForWhom: val('f_ForWhom'),
+        Notes: val('f_Notes'),
+        MediatorOrderForm: val('f_MediatorOrderForm'),
+        MediatorRefundForm: val('f_MediatorRefundForm'),
+        OrderScreenshot: screenshotUrl,
+        OrderStatus: val('f_OrderStatus') || 'Order Placed'
+      };
+
+      const res = await API.post('addOrder', { order });
+      btn.disabled = false;
+      btn.textContent = '✅ Submit Order + Notify WhatsApp';
+
+      if (!res.success) {
+        showToast(res.error || 'Failed to add order', 'error');
+        return false;
+      }
+
+      showToast(`Order #${res.data.order.OrderNo} created · WhatsApp notified`, 'success');
+      document.getElementById('orderForm').reset();
+      resetFormExtras();
+      document.getElementById('f_OrderStatus').value = 'Order Placed';
+      loadStats();
+      loadOrders();
+      return false;
+    }
+
+    function val(id) {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+
+    // Edit
+    function openEdit(orderNo) {
+      const o = allOrders.find(x => String(x.OrderNo) === String(orderNo));
+      if (!o) return;
+      editingOrderNo = orderNo;
+      document.getElementById('editTitle').textContent = `Edit Order #${orderNo}`;
+
+      const statusOpts = (dropdowns.statuses || DK.STATUS_FLOW.concat(DK.EXTRA_STATUSES))
+        .map(s => `<option value="${escapeHtml(s)}" ${s === o.OrderStatus ? 'selected' : ''}>${escapeHtml(s)}</option>`)
+        .join('');
+
+      document.getElementById('editBody').innerHTML = `
+        <div class="form-row">
+          <div class="form-group">
+            <label>Product Name</label>
+            <input id="e_ProductName" value="${escapeHtml(o.ProductName || '')}" />
+          </div>
+          <div class="form-group">
+            <label>Order Status</label>
+            <select id="e_OrderStatus">${statusOpts}</select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Platform Order ID</label>
+            <input id="e_PlatformOrderID" value="${escapeHtml(o.PlatformOrderID || '')}" />
+          </div>
+          <div class="form-group">
+            <label>Account</label>
+            <input id="e_AccountName" value="${escapeHtml(o.AccountName || '')}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Price Paid</label>
+            <input type="number" id="e_PricePaid" value="${escapeHtml(o.PricePaid)}" />
+          </div>
+          <div class="form-group">
+            <label>Less</label>
+            <input type="number" id="e_Less" value="${escapeHtml(o.Less)}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>To Get</label>
+            <input type="number" id="e_ToGet" value="${escapeHtml(o.ToGet)}" />
+          </div>
+          <div class="form-group">
+            <label>Actual Got</label>
+            <input type="number" id="e_ActualGot" value="${escapeHtml(o.ActualGot || '')}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Delivery Date</label>
+            <input type="date" id="e_DeliveryDate" value="${dateInput(o.DeliveryDate)}" />
+          </div>
+          <div class="form-group">
+            <label>Review Date</label>
+            <input type="date" id="e_ReviewDate" value="${dateInput(o.ReviewDate)}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Review Live Date</label>
+            <input type="date" id="e_ReviewLiveDate" value="${dateInput(o.ReviewLiveDate)}" />
+          </div>
+          <div class="form-group">
+            <label>Refund Form Date</label>
+            <input type="date" id="e_RefundFormDate" value="${dateInput(o.RefundFormDate)}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Refund Date</label>
+            <input type="date" id="e_RefundDate" value="${dateInput(o.RefundDate)}" />
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <input id="e_PaymentMethod" value="${escapeHtml(o.PaymentMethod || '')}" placeholder="UPI / Bank / …" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Friend UserID</label>
+            <input id="e_FriendUserID" value="${escapeHtml(o.FriendUserID || '')}" />
+          </div>
+          <div class="form-group">
+            <label>Friend Less</label>
+            <input type="number" id="e_FriendLess" value="${escapeHtml(o.FriendLess || '')}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Review Link</label>
+          <input id="e_ReviewLink" value="${escapeHtml(o.ReviewLink || '')}" />
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="e_Notes" rows="2">${escapeHtml(o.Notes || '')}</textarea>
+        </div>
+        <div class="small muted">Changing status to <strong>Got Refund</strong> will WhatsApp the buyer (live API).</div>
+      `;
+      document.getElementById('editModal').classList.add('open');
+    }
+
+    function dateInput(d) {
+      if (!d) return '';
+      try {
+        const dt = new Date(d);
+        if (isNaN(dt)) {
+          // already yyyy-mm-dd?
+          const s = String(d);
+          if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+          return '';
+        }
+        return dt.toISOString().slice(0, 10);
+      } catch { return ''; }
+    }
+
+    function closeEdit() {
+      document.getElementById('editModal').classList.remove('open');
+      editingOrderNo = null;
+    }
+    document.getElementById('editModal').addEventListener('click', e => {
+      if (e.target.id === 'editModal') closeEdit();
+    });
+
+    async function saveEdit() {
+      if (!editingOrderNo) return;
+      const btn = document.getElementById('saveEditBtn');
+      btn.disabled = true;
+      const order = {
+        OrderNo: editingOrderNo,
+        ProductName: document.getElementById('e_ProductName').value,
+        OrderStatus: document.getElementById('e_OrderStatus').value,
+        PlatformOrderID: document.getElementById('e_PlatformOrderID').value,
+        AccountName: document.getElementById('e_AccountName').value,
+        PricePaid: document.getElementById('e_PricePaid').value,
+        Less: document.getElementById('e_Less').value,
+        ToGet: document.getElementById('e_ToGet').value,
+        ActualGot: document.getElementById('e_ActualGot').value,
+        DeliveryDate: document.getElementById('e_DeliveryDate').value,
+        ReviewDate: document.getElementById('e_ReviewDate').value,
+        ReviewLiveDate: document.getElementById('e_ReviewLiveDate').value,
+        RefundFormDate: document.getElementById('e_RefundFormDate').value,
+        RefundDate: document.getElementById('e_RefundDate').value,
+        PaymentMethod: document.getElementById('e_PaymentMethod').value,
+        FriendUserID: document.getElementById('e_FriendUserID').value,
+        FriendLess: document.getElementById('e_FriendLess').value,
+        ReviewLink: document.getElementById('e_ReviewLink').value,
+        Notes: document.getElementById('e_Notes').value
+      };
+      const res = await API.post('updateOrder', { orderNo: editingOrderNo, order });
+      btn.disabled = false;
+      if (!res.success) {
+        showToast(res.error || 'Update failed', 'error');
+        return;
+      }
+      showToast(
+        res.data.notifyRefund
+          ? `Order #${editingOrderNo} updated · Refund WhatsApp sent`
+          : `Order #${editingOrderNo} updated`,
+        'success'
+      );
+      closeEdit();
+      loadOrders();
+      loadStats();
+    }
+
+    // WhatsApp
+    function fillWAOrderPick() {
+      const sel = document.getElementById('waOrderPick');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— Optional order template —</option>' +
+        allOrders.map(o =>
+          `<option value="${escapeHtml(String(o.OrderNo))}">#${escapeHtml(o.OrderNo)} — ${escapeHtml(o.ProductName || '')}</option>`
+        ).join('');
+    }
+
+    function fillWAFromOrder() {
+      const no = document.getElementById('waOrderPick').value;
+      const o = allOrders.find(x => String(x.OrderNo) === no);
+      if (!o) return;
+      const phone = o.DealContactNo || '';
+      if (phone) {
+        let p = String(phone).replace(/\D/g, '');
+        if (p.length === 10) p = '91' + p;
+        document.getElementById('waPhone').value = p;
+      }
+      document.getElementById('waMessage').value =
+        `DealKart Order #${o.OrderNo}\n` +
+        `Product: ${o.ProductName}\n` +
+        `Platform: ${o.OrderedPlatform}\n` +
+        `Status: ${o.OrderStatus}\n` +
+        `Paid: ₹${o.PricePaid} | Cashback: ₹${o.Less}\n` +
+        `Track with Order #${o.OrderNo}`;
+    }
+
+    async function sendManualWA(e) {
+      e.preventDefault();
+      const btn = document.getElementById('waSendBtn');
+      btn.disabled = true;
+      const res = await API.post('sendWhatsApp', {
+        phone: document.getElementById('waPhone').value,
+        message: document.getElementById('waMessage').value
+      });
+      btn.disabled = false;
+      if (res.success) {
+        showToast(res.data.demo ? 'Demo: WhatsApp logged to console' : 'WhatsApp sent', 'success');
+      } else showToast(res.error || 'Send failed', 'error');
+      return false;
+    }
+
+    async function loadQueries() {
+      const res = await API.get('getQueries');
+      const box = document.getElementById('queriesList');
+      if (!res.success) {
+        box.innerHTML = `<div class="empty-state">${escapeHtml(res.error || 'Error')}</div>`;
+        return;
+      }
+      const list = res.data || [];
+      if (!list.length) {
+        box.innerHTML = `<div class="empty-state"><div class="icon">💬</div>No queries yet</div>`;
+        return;
+      }
+      box.innerHTML = list.map(q => `
+        <div class="card mb-1">
+          <div class="flex-between flex-wrap gap-1 mb-1">
+            <span class="badge ${q.type === 'deal_request' || q.Type === 'deal_request' ? 'badge-purple' : 'badge-blue'}">
+              ${escapeHtml(q.type || q.Type || 'query')}
+            </span>
+            <span class="xs mono muted">${escapeHtml(formatDateTime(q.time || q.Timestamp))}</span>
+          </div>
+          <div class="small">
+            <strong>${escapeHtml(q.buyerName || q.BuyerName || q.buyerUserId || q.BuyerUserID || '—')}</strong>
+            ${q.buyerMobile || q.BuyerMobile ? ' · ' + escapeHtml(q.buyerMobile || q.BuyerMobile) : ''}
+          </div>
+          <div class="small muted mt-1">
+            ${q.dealName || q.DealName ? 'Deal: ' + escapeHtml(q.dealName || q.DealName) : ''}
+            ${q.orderNo || q.OrderOrDealId ? ' · Order/ID: ' + escapeHtml(q.orderNo || q.OrderOrDealId) : ''}
+          </div>
+          ${q.message || q.Message ? `<div class="mt-1">${escapeHtml(q.message || q.Message)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function addAccount(e) {
+      e.preventDefault();
+      const account = {
+        UserID: document.getElementById('acc_UserID').value.trim(),
+        Name: document.getElementById('acc_Name').value.trim(),
+        Mobile: document.getElementById('acc_Mobile').value.trim(),
+        WhatsApp: document.getElementById('acc_WhatsApp').value.trim() ||
+          ('91' + document.getElementById('acc_Mobile').value.trim()),
+        Role: document.getElementById('acc_Role').value
+      };
+      const res = await API.post('addAccount', { account });
+      if (res.success) {
+        showToast('Account added', 'success');
+        e.target.reset();
+        await refreshDropdowns();
+      } else showToast(res.error || 'Failed', 'error');
+      return false;
+    }
+
+    async function addMediator(e) {
+      e.preventDefault();
+      const mediator = {
+        Name: document.getElementById('med_Name').value.trim(),
+        Contact: document.getElementById('med_Contact').value.trim(),
+        WhatsApp: document.getElementById('med_WhatsApp').value.trim()
+      };
+      const res = await API.post('addMediator', { mediator });
+      if (res.success) {
+        showToast('Mediator added', 'success');
+        e.target.reset();
+        await refreshDropdowns();
+      } else showToast(res.error || 'Failed', 'error');
+      return false;
+    }
+
+    async function loadSettings() {
+      const res = await API.get('getSettings');
+      if (res.success && res.data) {
+        document.getElementById('set_AdminWA').value = res.data.adminWhatsApp || '';
+        document.getElementById('waAdminDisplay').textContent = '+' + (res.data.adminWhatsApp || DK.ADMIN_WHATSAPP);
+      }
+    }
+
+    async function saveSettings(e) {
+      e.preventDefault();
+      const payload = {
+        adminWhatsApp: document.getElementById('set_AdminWA').value.trim()
+      };
+      const pass = document.getElementById('set_AdminPass').value;
+      if (pass) payload.adminPassword = pass;
+      const res = await API.post('updateSettings', payload);
+      if (res.success) {
+        showToast('Settings saved', 'success');
+        document.getElementById('set_AdminPass').value = '';
+        document.getElementById('waAdminDisplay').textContent = '+' + (res.data.adminWhatsApp || payload.adminWhatsApp);
+      } else showToast(res.error || 'Failed', 'error');
+      return false;
+    }
+
+    // Init
+    (async () => {
+      await refreshDropdowns();
+      await loadStats();
+      await loadOrders();
+      await loadSettings();
+    })();
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b6f0ac98c577ec',t:'MTc4NDA5OTM1MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

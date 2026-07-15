@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Track Order — DealKart</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🛒</div>
+        Deal<span>Kart</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="deals.html">Deals</a></li>
+        <li><a href="track.html" class="active">Track</a></li>
+        <li><a href="login.html" id="navLoginBtn">Login</a></li>
+      </ul>
+      <div class="nav-actions">
+        <span class="badge badge-blue hidden" id="navUserChip"></span>
+        <a href="#" class="btn btn-primary btn-sm hidden" id="navDashBtn">Dashboard</a>
+        <button class="btn btn-ghost btn-sm hidden" id="navLogoutBtn" onclick="logout()">Logout</button>
+        <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container" style="max-width: 720px;">
+      <div class="text-center mb-3">
+        <h1>📦 Track Your Order</h1>
+        <p class="muted mt-1">Public tracking — enter Order Number only. No login required.</p>
+      </div>
+
+      <div class="card mb-3">
+        <form id="trackForm" onsubmit="return doTrack(event)">
+          <label for="orderNo">Order Number <span class="req">*</span></label>
+          <div class="input-group">
+            <input type="text" id="orderNo" placeholder="e.g. 1, 2, 3…" inputmode="numeric" required autocomplete="off" />
+            <button type="submit" class="btn btn-primary" id="trackBtn">Track</button>
+          </div>
+          <div class="xs muted mt-1">Tip: Your Order No is shared on WhatsApp when the order is placed.</div>
+        </form>
+      </div>
+
+      <div id="result" class="hidden"></div>
+      <div id="emptyHint" class="empty-state">
+        <div class="icon">🔎</div>
+        Enter an order number above to see the 6-step timeline.
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container"><strong>DealKart</strong> · Track</div>
+  </footer>
+
+  <script src="_config.js"></script>
+  <script>
+    // Prefill from ?order=
+    const params = new URLSearchParams(location.search);
+    if (params.get('order')) {
+      document.getElementById('orderNo').value = params.get('order');
+      doTrack({ preventDefault() {} });
+    }
+
+    async function doTrack(e) {
+      e.preventDefault();
+      const orderNo = document.getElementById('orderNo').value.trim();
+      if (!orderNo) return false;
+
+      const btn = document.getElementById('trackBtn');
+      btn.disabled = true;
+      btn.textContent = '…';
+      document.getElementById('emptyHint').classList.add('hidden');
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('result').innerHTML = `<div class="loading-center"><div class="spinner"></div>Looking up #${escapeHtml(orderNo)}…</div>`;
+
+      const res = await API.get('getOrder', { orderNo });
+      btn.disabled = false;
+      btn.textContent = 'Track';
+
+      if (!res.success || !res.data) {
+        document.getElementById('result').innerHTML = `
+          <div class="empty-state">
+            <div class="icon">😕</div>
+            <strong>Order #${escapeHtml(orderNo)} not found</strong>
+            <p class="small muted mt-1">Double-check the number or ask admin.</p>
+          </div>`;
+        return false;
+      }
+
+      renderOrder(res.data);
+      return false;
+    }
+
+    function renderOrder(o) {
+      const stepIdx = DK.statusStep(o.OrderStatus);
+      const isError = stepIdx < 0 && o.OrderStatus && !DK.STATUS_FLOW.includes(o.OrderStatus);
+
+      const dates = [
+        o.OrderDate,
+        o.DeliveryDate,
+        o.ReviewDate,
+        o.ReviewLiveDate,
+        o.RefundFormDate,
+        o.RefundDate
+      ];
+
+      const stepsHtml = DK.STATUS_FLOW.map((label, i) => {
+        let cls = 'pending';
+        if (isError) cls = i === 0 ? 'done' : 'pending';
+        else if (i < stepIdx) cls = 'done';
+        else if (i === stepIdx) cls = 'active';
+        const icon = cls === 'done' ? '✓' : (i + 1);
+        return `
+          <div class="tl-step ${cls}">
+            <div class="tl-dot">${icon}</div>
+            <div class="tl-label">${escapeHtml(label)}${dates[i] ? `<div class="xs dim mono">${escapeHtml(formatDate(dates[i]))}</div>` : ''}</div>
+          </div>`;
+      }).join('');
+
+      // Public fields only (hide sensitive account/mediator internals somewhat)
+      document.getElementById('result').innerHTML = `
+        <div class="card mb-2">
+          <div class="flex-between flex-wrap gap-1 mb-2">
+            <div>
+              <div class="xs muted">Order Number</div>
+              <div class="mono" style="font-size:1.4rem;font-weight:700">#${escapeHtml(o.OrderNo)}</div>
+            </div>
+            <span class="badge ${DK.badge(o.OrderStatus)}">${escapeHtml(o.OrderStatus || 'Unknown')}</span>
+          </div>
+          <h3 class="mb-1">${escapeHtml(o.ProductName || 'Product')}</h3>
+          <div class="flex flex-wrap gap-1 mb-2">
+            <span class="badge badge-blue">${escapeHtml(o.OrderedPlatform || '—')}</span>
+            ${o.ForWhom ? `<span class="badge badge-gray">${escapeHtml(o.ForWhom)}</span>` : ''}
+          </div>
+
+          <div class="timeline-h">${stepsHtml}</div>
+          ${isError ? `<div class="card" style="background:var(--danger-soft);border-color:rgba(239,68,68,0.3)">
+            <strong style="color:var(--danger)">⚠ Special status:</strong>
+            <span class="small"> ${escapeHtml(o.OrderStatus)}</span>
+          </div>` : ''}
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Order Details</span></div>
+          <div class="detail-grid">
+            <div class="label">Platform Order ID</div>
+            <div class="value mono">${escapeHtml(o.PlatformOrderID || '—')}</div>
+            <div class="label">Order Date</div>
+            <div class="value">${escapeHtml(formatDate(o.OrderDate))}</div>
+            <div class="label">Price Paid</div>
+            <div class="value mono">${formatINR(o.PricePaid)}</div>
+            <div class="label">Cashback (Less)</div>
+            <div class="value mono" style="color:var(--success)">${formatINR(o.ForWhom === 'Friend' && o.FriendLess ? o.FriendLess : o.Less)}</div>
+            <div class="label">You Get</div>
+            <div class="value mono" style="color:var(--accent)">${formatINR(o.ToGet)}</div>
+            ${o.OrderStatus === 'Got Refund' ? `
+              <div class="label">Actual Received</div>
+              <div class="value mono" style="color:var(--success)">${formatINR(o.ActualGot || o.ToGet)}</div>
+              <div class="label">Payment Method</div>
+              <div class="value">${escapeHtml(o.PaymentMethod || '—')}</div>
+              <div class="label">Refund Date</div>
+              <div class="value">${escapeHtml(formatDate(o.RefundDate))}</div>
+            ` : ''}
+            ${o.Notes ? `<div class="label">Notes</div><div class="value">${escapeHtml(o.Notes)}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b6faff9df18181',t:'MTc4NDA5OTc3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

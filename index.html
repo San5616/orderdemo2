@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DealKart — Personal Cashback Deal Tracker</title>
+  <meta name="description" content="Track cashback deals, orders, and refunds from multiple mediators. Personal deal tracker by San5616." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🛒</div>
+        Deal<span>Kart</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="deals.html">Deals</a></li>
+        <li><a href="track.html">Track</a></li>
+        <li><a href="login.html" id="navLoginBtn">Login</a></li>
+      </ul>
+      <div class="nav-actions">
+        <span class="badge badge-blue hidden" id="navUserChip"></span>
+        <a href="#" class="btn btn-primary btn-sm hidden" id="navDashBtn">Dashboard</a>
+        <button class="btn btn-ghost btn-sm hidden" id="navLogoutBtn" onclick="logout()">Logout</button>
+        <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="hero-badge">✦ Personal Cashback Tracker</div>
+        <h1>Track every deal.<br />Never miss a refund.</h1>
+        <p>
+          DealKart helps you manage mediator cashback orders across Amazon, Flipkart & more —
+          with live status, WhatsApp alerts, and buyer-friendly tracking.
+        </p>
+        <div class="hero-actions">
+          <a href="track.html" class="btn btn-primary btn-lg">🔍 Track Order</a>
+          <a href="deals.html" class="btn btn-secondary btn-lg">🔥 Browse Deals</a>
+          <a href="login.html" class="btn btn-ghost btn-lg">Login</a>
+        </div>
+      </section>
+
+      <!-- Stats -->
+      <section class="section">
+        <div class="grid-4" id="statsBar">
+          <div class="stat-card">
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-label">Total Orders</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statActive">—</div>
+            <div class="stat-label">Active Deals</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statRefunded">—</div>
+            <div class="stat-label">Refunds Done</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statCashback">—</div>
+            <div class="stat-label">Cashback Paid</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick access -->
+      <section class="section">
+        <div class="section-header">
+          <h2 class="section-title">⚡ Quick Access</h2>
+        </div>
+        <div class="grid-3">
+          <a href="track.html" class="quick-card">
+            <div class="quick-icon">📦</div>
+            <h3>Track Order</h3>
+            <p>Enter your order number for a 6-step live timeline — no login needed.</p>
+          </a>
+          <a href="deals.html" class="quick-card">
+            <div class="quick-icon">🏷️</div>
+            <h3>Browse Deals</h3>
+            <p>See available cashback deals. Login to unlock prices and request a deal.</p>
+          </a>
+          <a href="login.html" class="quick-card">
+            <div class="quick-icon">👤</div>
+            <h3>Buyer Login</h3>
+            <p>Friends login with mobile / UserID to view only their own orders.</p>
+          </a>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section class="section">
+        <div class="section-header">
+          <h2 class="section-title">🧭 How It Works</h2>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <div class="flex gap-1 mb-2">
+              <div class="step-num">1</div>
+              <h3>Deal is taken</h3>
+            </div>
+            <p class="muted small">Admin places the order via a reviewer account through a mediator (Nitesh, Panda, etc.).</p>
+          </div>
+          <div class="card">
+            <div class="flex gap-1 mb-2">
+              <div class="step-num">2</div>
+              <h3>You track progress</h3>
+            </div>
+            <p class="muted small">Order Placed → Received → Reviewed → Review Live → Refund Form → Got Refund.</p>
+          </div>
+          <div class="card">
+            <div class="flex gap-1 mb-2">
+              <div class="step-num">3</div>
+              <h3>Cashback lands</h3>
+            </div>
+            <p class="muted small">When refund is marked, you get a WhatsApp alert with amount & payment method.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Status legend -->
+      <section class="section">
+        <div class="section-header">
+          <h2 class="section-title">🎯 Status Guide</h2>
+        </div>
+        <div class="card">
+          <div class="flex flex-wrap gap-1">
+            <span class="badge badge-blue">Order Placed</span>
+            <span class="badge badge-cyan">Product Received</span>
+            <span class="badge badge-purple">Reviewed</span>
+            <span class="badge badge-yellow">Review Live</span>
+            <span class="badge badge-yellow">Refund form filled</span>
+            <span class="badge badge-green">Got Refund</span>
+            <span class="badge badge-red">Cancelled / Issues</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="section text-center">
+        <div class="card card-glow" style="padding: 2.5rem;">
+          <h2 class="mb-1">Ready to track your cashback?</h2>
+          <p class="muted mb-2">Public tracking needs only your Order No. Buyers can login for full history.</p>
+          <div class="hero-actions">
+            <a href="track.html" class="btn btn-primary">Track Now</a>
+            <a href="login.html" class="btn btn-secondary">Buyer / Admin Login</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <strong>DealKart</strong> · Personal Cashback Deal Tracker · Owner <span class="mono">San5616</span>
+      <div class="xs mt-1 dim">Demo mode works offline · Connect Google Apps Script for live data</div>
+    </div>
+  </footer>
+
+  <script src="_config.js"></script>
+  <script>
+    async function loadStats() {
+      const res = await API.get('getStats');
+      if (!res.success) return;
+      const s = res.data;
+      document.getElementById('statTotal').textContent = s.total;
+      document.getElementById('statActive').textContent = s.active;
+      document.getElementById('statRefunded').textContent = s.refunded;
+      document.getElementById('statCashback').textContent = formatINR(s.cashback);
+    }
+    loadStats();
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b6fa7d5e308181',t:'MTc4NDA5OTc1Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — DealKart</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🛒</div>
+        Deal<span>Kart</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="deals.html">Deals</a></li>
+        <li><a href="track.html">Track</a></li>
+        <li><a href="login.html" class="active" id="navLoginBtn">Login</a></li>
+      </ul>
+      <div class="nav-actions">
+        <span class="badge badge-blue hidden" id="navUserChip"></span>
+        <a href="#" class="btn btn-primary btn-sm hidden" id="navDashBtn">Dashboard</a>
+        <button class="btn btn-ghost btn-sm hidden" id="navLogoutBtn" onclick="logout()">Logout</button>
+        <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container" style="max-width: 440px;">
+      <div class="text-center mb-3">
+        <h1>Welcome back</h1>
+        <p class="muted mt-1">Buyer login via mobile / UserID · Admin via password</p>
+      </div>
+
+      <div class="card">
+        <div class="tabs">
+          <button type="button" class="tab-btn active" data-tab="buyer" onclick="switchTab('buyer')">👤 Buyer</button>
+          <button type="button" class="tab-btn" data-tab="admin" onclick="switchTab('admin')">🔐 Admin</button>
+        </div>
+
+        <!-- Buyer -->
+        <div class="tab-panel active" id="panel-buyer">
+          <form onsubmit="return loginBuyer(event)">
+            <div class="form-group">
+              <label for="buyerId">Mobile Number or UserID <span class="req">*</span></label>
+              <input type="text" id="buyerId" placeholder="9876543210 or B_Rahul_04" required autocomplete="username" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="buyerBtn">Login as Buyer</button>
+          </form>
+          <div class="mt-2 small muted text-center">
+            Demo buyers: <span class="mono">B_Rahul_04</span> · <span class="mono">B_Priya_02</span>
+            <br />or mobile <span class="mono">9876543210</span>
+          </div>
+        </div>
+
+        <!-- Admin -->
+        <div class="tab-panel" id="panel-admin">
+          <form onsubmit="return loginAdmin(event)">
+            <div class="form-group">
+              <label for="adminPass">Admin Password <span class="req">*</span></label>
+              <input type="password" id="adminPass" placeholder="Enter admin password" required autocomplete="current-password" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="adminBtn">Login as Admin</button>
+          </form>
+          <div class="mt-2 small muted text-center">
+            Demo password: <span class="mono">admin123</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-center small muted mt-2">
+        Just need to check one order? <a href="track.html">Public track →</a>
+      </p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container"><strong>DealKart</strong> · Login</div>
+  </footer>
+
+  <script src="_config.js"></script>
+  <script>
+    // Already logged in?
+    (function () {
+      const s = Session.get();
+      if (s) {
+        window.location.href = s.role === 'admin' ? 'admin-dashboard.html' : 'buyer-dashboard.html';
+      }
+    })();
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    }
+
+    // ?tab=admin
+    const t = new URLSearchParams(location.search).get('tab');
+    if (t === 'admin') switchTab('admin');
+
+    async function loginBuyer(e) {
+      e.preventDefault();
+      const identifier = document.getElementById('buyerId').value.trim();
+      const btn = document.getElementById('buyerBtn');
+      btn.disabled = true;
+      btn.textContent = 'Checking…';
+      const res = await API.post('loginBuyer', { identifier });
+      btn.disabled = false;
+      btn.textContent = 'Login as Buyer';
+      if (!res.success) {
+        showToast(res.error || 'Login failed', 'error');
+        return false;
+      }
+      Session.set(res.data);
+      showToast('Welcome, ' + (res.data.name || res.data.userId), 'success');
+      setTimeout(() => { location.href = 'buyer-dashboard.html'; }, 400);
+      return false;
+    }
+
+    async function loginAdmin(e) {
+      e.preventDefault();
+      const password = document.getElementById('adminPass').value;
+      const btn = document.getElementById('adminBtn');
+      btn.disabled = true;
+      btn.textContent = 'Checking…';
+      const res = await API.post('loginAdmin', { password });
+      btn.disabled = false;
+      btn.textContent = 'Login as Admin';
+      if (!res.success) {
+        showToast(res.error || 'Invalid password', 'error');
+        return false;
+      }
+      Session.set(res.data);
+      showToast('Admin access granted', 'success');
+      setTimeout(() => { location.href = 'admin-dashboard.html'; }, 400);
+      return false;
+    }
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b6f527cd6b8181',t:'MTc4NDA5OTUzNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
