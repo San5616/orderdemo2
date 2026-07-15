@@ -4,7 +4,7 @@
  */
 const DK = {
   // ── Paste your Google Apps Script Web App URL here after deploy ──
-  API_URL: 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE',
+  API_URL: 'https://script.google.com/macros/s/AKfycbx3PBEQbnW7AVrQJjVmbGA9G40g2WpOTOONbrr-O0kpQwp4MSmJ7XDxLSfEMywneqw/exec',
 
   // Fallback demo mode when API is not configured
   DEMO_MODE: true,
