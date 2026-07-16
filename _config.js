@@ -7,7 +7,7 @@ const DK = {
   API_URL: 'https://script.google.com/macros/s/AKfycbx3PBEQbnW7AVrQJjVmbGA9G40g2WpOTOONbrr-O0kpQwp4MSmJ7XDxLSfEMywneqw/exec',
 
   // Fallback demo mode when API is not configured
-  DEMO_MODE: true,
+  DEMO_MODE: false,
 
   // Admin password (change after first login via admin settings / Code.gs)
   // Client-side check only for UX; real gate is Apps Script ADMIN_PASSWORD
